@@ -122,22 +122,7 @@ def _get_all_publishers():
 
 @query_debugger(django_logger)
 def _get_publishers_with_expensive_books():
-    """
-    Lesson 4: SubQuery example
-    """
-    expensive_books = Book.objects.filter(price__gte=200)
-
-    # N queries:
-    # publishers_ids = [book.publisher.id for book in expensive_books]
-    # publishers_with_expensive_books = Publisher.objects.filter(id__in=publishers_ids)
-
-    # Only one query:
-    publishers_with_expensive_books = Publisher.objects.filter(
-        id__in=Subquery(expensive_books.values('publisher'))
-    )
-    logger.info(f"SQL: {publishers_with_expensive_books.query}")
-
-    return [item for item in publishers_with_expensive_books.values()]
+    pass
 
 
 @query_debugger(django_logger)
