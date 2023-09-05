@@ -120,14 +120,28 @@ def _get_all_publishers():
     return publishers_with_books
 
 
-@query_debugger(django_logger)
-def _get_publishers_with_expensive_books():
-    pass
-
-
-@query_debugger(django_logger)
+@query_debugger(logger)
 def _get_expensive_books():
-    pass
+    all_books = Book.objects.filter(price__range=(250, 300)).select_related('publisher')
+    return [str(book) for book in all_books]
+
+
+@query_debugger(logger)
+def _get_authors_with_expensive_books():
+    queryset = Author.objects.prefetch_related(
+        Prefetch(
+            'books',
+            queryset=Book.objects.filter(price__range=(250, 300))
+        )
+    )
+
+    authors = []
+    for author in queryset:
+        stores_filtered = author.books.all()
+        books = [book.name for book in stores_filtered]
+        authors.append({'id': author.id, 'name': author.first_name, 'books': books})
+
+    return authors
 
 
 # ENDPOINTS
@@ -149,11 +163,6 @@ def get_stores_with_expensive_books(request: HttpRequest) -> HttpResponse:
 def get_all_publishers(request: HttpRequest) -> HttpResponse:
     pubs = _get_all_publishers()
     return HttpResponse(f"All Publishers:\n {pubs}")
-
-
-def get_publishers_with_expensive_books(request: HttpRequest) -> HttpResponse:
-    authors = _get_publishers_with_expensive_books()
-    return HttpResponse(f"Publishers with expensive books:\n {authors}")
 
 
 def get_book_by_id(request: HttpRequest, book_id: int) -> HttpResponse:
@@ -186,7 +195,8 @@ def get_all_authors(request: HttpRequest) -> HttpResponse:
 
 
 def get_authors_with_expensive_books(request: HttpRequest) -> HttpResponse:
-    pass
+    authors_list = _get_authors_with_expensive_books()
+    return HttpResponse(f"Stores with expensive books:\n {authors_list}")
 
 
 def get_publisher_by_id(request: HttpRequest, publisher_id: int) -> HttpResponse:
