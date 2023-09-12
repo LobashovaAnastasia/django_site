@@ -3,9 +3,12 @@ import logging
 import sys
 
 from django.http import HttpResponse, HttpRequest, HttpResponseNotFound
-from my_app.models import Book, Store, Author, Publisher
+from my_app.models import Book, Store, Author, Publisher, User
 from my_app.utils import query_debugger
 from django.db.models import Prefetch, Subquery
+from django.shortcuts import render
+from my_app.forms import UserForm, PublisherForm, BookForm
+import result
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d %(levelname)s "
@@ -180,7 +183,7 @@ def get_book_by_id(request: HttpRequest, book_id: int) -> HttpResponse:
 
 
 def hello(request: HttpRequest) -> HttpResponse:
-    return HttpResponse(f"Hello World!")
+    return render(request, template_name="index.html")
 
 
 # HOMEWORK
@@ -227,3 +230,151 @@ def get_author_by_id(request: HttpRequest, author_id: int) -> HttpResponse:
     return HttpResponse(
         f"<h1>Found author: {author.first_name} {author.last_name}, 'id': {author_id}</h1>"
     )
+
+# ---------- Lesson DJANGO TEMPLATES ----------- #
+
+
+def hello_v2(request: HttpRequest) -> HttpResponse:
+    return render(request, "index.html")
+
+
+def get_first_three_books(request: HttpRequest) -> HttpResponse:
+    keys = ('book1', 'book2', 'book3')
+    not_found = 'Not Found'
+
+    match _get_all_books()[:3]:
+        case book1, book2, book3:
+            context = dict(zip(keys, (book1, book2, book3)))
+        case book1, book2:
+            context = dict(zip(keys, (book1, book2, not_found)))
+        case book1, *_:
+            context = dict(zip(keys, (book1, not_found, not_found)))
+        case _:
+            context = dict.fromkeys(keys, not_found)
+
+    return render(
+        request,
+        "books1.html",
+        context=context
+    )
+
+
+def get_all_books_v2(request: HttpRequest) -> HttpResponse:
+    books_list = _get_all_books()
+
+    return render(
+        request,
+        "books2.html",
+        context={
+            'books': books_list
+        }
+    )
+
+
+# ---------- Lesson DJANGO TEMPLATES: HOMEWORK ----------- #
+
+@query_debugger(logger)
+def _get_only_books_with_authors():
+
+    pass
+
+
+def get_only_books_with_authors(request: HttpRequest) -> HttpResponse:
+    pass
+
+
+def get_user_form(request: HttpRequest) -> HttpResponse:
+    form = UserForm()
+    return render(
+        request,
+        "user_form.html",
+        context={"form": form}
+    )
+
+
+def _add_user(user_dict: dict):
+    user = User.objects.create(
+        name=user_dict.get("name") or 'default_name',
+        age=user_dict.get("age") or 18,
+        gender=user_dict.get("gender") or "female",
+        nationality=user_dict.get("nationality") or "belarus",
+    )
+    return user
+
+
+def add_user(request: HttpRequest) -> HttpResponse:
+    rq_data = request.POST
+    user_data = {
+        "name": rq_data.get("name"),
+        "age": rq_data.get("age"),
+        "gender": rq_data.get("gender"),
+        "nationality": rq_data.get("nationality")
+    }
+    user = _add_user(user_data)
+
+    return HttpResponse(f"User: {user}")
+
+
+def get_publisher_form(request: HttpRequest) -> HttpResponse:
+    form = PublisherForm()
+    return render(
+        request,
+        "publisher_form.html",
+        context={"form": form}
+    )
+
+
+def _add_publisher(publisher_dict):
+    publisher = Publisher.objects.create(
+        name=publisher_dict.get("name") or "default_name")
+
+    return publisher
+
+
+def add_publisher(request: HttpRequest) -> HttpResponse:
+    rq_data = request.POST
+    publisher_data = {
+        "name": rq_data.get("name")
+    }
+    publisher_name = rq_data.get("name")
+    if Publisher.objects.filter(name=publisher_name).exists():
+        return HttpResponse(f"Publisher with name {publisher_name} already exist.")
+    publisher = _add_publisher(publisher_data)
+    return HttpResponse(f"Publisher: {publisher}")
+
+
+def get_book_form(request: HttpRequest) -> HttpResponse:
+    form = BookForm()
+    return render(
+        request,
+        "book_form.html",
+        context={"form": form}
+    )
+
+
+def _add_book(book_dict):
+    book = Book.objects.create(
+        name=book_dict.get("name") or "default_name",
+        price=book_dict.get("price") or 100,
+        publisher=book_dict.get("publisher") or "default_publisher"
+    )
+
+    return book
+
+
+def add_book(request: HttpRequest) -> HttpResponse:
+    rq_data = request.POST
+    book_data = {
+        "name": rq_data.get("name"),
+        "price": rq_data.get("price"),
+        "publisher": rq_data.get("publisher")
+    }
+    publisher_data = {"name": rq_data.get("publisher")}
+    publisher_name = rq_data.get("publisher")
+    if Publisher.objects.filter(name=publisher_name).exists():
+        """?????"""
+    else:
+        _add_publisher(publisher_data)
+
+    book = _add_book(book_data)
+    return HttpResponse(f"Book: {book}")
