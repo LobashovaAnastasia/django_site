@@ -275,12 +275,29 @@ def get_all_books_v2(request: HttpRequest) -> HttpResponse:
 
 @query_debugger(logger)
 def _get_only_books_with_authors():
+    queryset = Book.objects.select_related("publisher").filter(authors=True)
+    logger.warning(f"SQL: {str(queryset.query)}")
 
-    pass
+    return [
+        {'id': book.id,
+         'name': book.name,
+         'publisher': book.publisher.name,
+         'authors': book.authors
+         }
+        for book in queryset
+    ]
 
 
 def get_only_books_with_authors(request: HttpRequest) -> HttpResponse:
-    pass
+    books_list = _get_only_books_with_authors()
+
+    return render(
+        request,
+        "books3.html",
+        context={
+            'books': books_list
+        }
+    )
 
 
 def get_user_form(request: HttpRequest) -> HttpResponse:
@@ -367,14 +384,12 @@ def add_book(request: HttpRequest) -> HttpResponse:
     book_data = {
         "name": rq_data.get("name"),
         "price": rq_data.get("price"),
-        "publisher": rq_data.get("publisher")
     }
-    publisher_data = {"name": rq_data.get("publisher")}
-    publisher_name = rq_data.get("publisher")
-    if Publisher.objects.filter(name=publisher_name).exists():
-        """?????"""
+    pub_name = rq_data.get("publisher")
+    if pub := Publisher.objects.filter(name=pub_name):
+        book_data['publisher'] = pub.first()
     else:
-        _add_publisher(publisher_data)
+        book_data['publisher'] = _add_publisher({'name': pub_name})
 
     book = _add_book(book_data)
     return HttpResponse(f"Book: {book}")
