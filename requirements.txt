@@ -1,0 +1,8 @@
+django
+djangorestframework
+requests
+pymemcache
+django-debug-toolbar
+cachetools
+asyncache
+django-rest-swagger
