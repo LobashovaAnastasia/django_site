@@ -22,5 +22,8 @@ urlpatterns = [
     path('my_app/', include('my_app.urls')),
     # Lesson Django REST
     path('api-auth/', include('rest_framework.urls')),
-    path('drf_app/', include('drf_app.urls'))
+    path('drf_app/', include('drf_app.urls')),
+    path('auth/', include('djoser.urls')),
+    path('auth/', include('djoser.urls.authtoken')),
+    path("debug/", include("debug_toolbar.urls")),
 ]

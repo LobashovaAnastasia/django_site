@@ -4,7 +4,7 @@ from . import views
 
 urlpatterns = [
     path('books', views.get_all_books),
-    path('books/book/<book_id>', views.get_book_by_id),
+    path('books/book/<book_id>', views.get_book_by_id_cached),
     path('books/expensive_books', views.get_expensive_books),
     path('stores', views.get_all_stores),
     path('stores/store/<store_id>', views.get_store_by_id),
@@ -18,7 +18,7 @@ urlpatterns = [
     path('books/first_three_books', views.get_first_three_books),
     path('books2', views.get_all_books_v2),
     path('hello', views.hello_v2),
-    path('books/books_with_authors', views.get_only_books_with_authors),  # TODO
+    path('books/books_with_authors', views.get_only_books_with_authors),
 
     path('user/create', views.get_user_form),
     path('user/save', views.add_user),

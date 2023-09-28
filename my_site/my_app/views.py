@@ -9,6 +9,9 @@ from django.db.models import Prefetch, Subquery
 from django.shortcuts import render
 from my_app.forms import UserForm, PublisherForm, BookForm
 import result
+from django.views.decorators.cache import cache_page
+from cachetools import TTLCache
+
 
 logging.basicConfig(
     format="%(asctime)s.%(msecs)03d %(levelname)s "
@@ -163,6 +166,7 @@ def get_stores_with_expensive_books(request: HttpRequest) -> HttpResponse:
     return HttpResponse(f"Stores with expensive books:\n {stores_list}")
 
 
+@cache_page(180)
 def get_all_publishers(request: HttpRequest) -> HttpResponse:
     pubs = _get_all_publishers()
     return HttpResponse(f"All Publishers:\n {pubs}")
@@ -275,29 +279,22 @@ def get_all_books_v2(request: HttpRequest) -> HttpResponse:
 
 @query_debugger(logger)
 def _get_only_books_with_authors():
-    queryset = Book.objects.select_related("publisher").filter(authors=True)
-    logger.warning(f"SQL: {str(queryset.query)}")
+    queryset = Book.objects.select_related('publisher').prefetch_related('authors')
 
-    return [
-        {'id': book.id,
-         'name': book.name,
-         'publisher': book.publisher.name,
-         'authors': book.authors
-         }
-        for book in queryset
-    ]
+    books = []
+    for book in queryset:
+        authors = book.authors.all()
+        if authors:
+            books.append({'name': book.name, 'price': book.price, 'publisher': book.publisher,
+                          'authors': [str(a) for a in authors]})
+
+    return books
 
 
 def get_only_books_with_authors(request: HttpRequest) -> HttpResponse:
-    books_list = _get_only_books_with_authors()
-
-    return render(
-        request,
-        "books3.html",
-        context={
-            'books': books_list
-        }
-    )
+    books = _get_only_books_with_authors()
+    logger.debug(books)
+    return render(request, "books3.html", context={"books": books})
 
 
 def get_user_form(request: HttpRequest) -> HttpResponse:
@@ -393,3 +390,37 @@ def add_book(request: HttpRequest) -> HttpResponse:
 
     book = _add_book(book_data)
     return HttpResponse(f"Book: {book}")
+
+
+# Python cache
+
+_CACHE = TTLCache(
+    ttl=60*2,
+    maxsize=10
+)
+
+
+def get_book_by_id_cached(request: HttpRequest, book_id: int) -> HttpResponse:
+    def book_by_id():
+        if not (book := Book.objects.filter(id=book_id).first()):
+            return None
+
+        authors = book.authors.all()
+        authors = [str(a) for a in authors]
+        logger.debug(authors)
+        return book, authors
+
+    if book_id in _CACHE:
+        logger.debug(f'get from cache: {book_id}')
+        result = _CACHE[book_id]
+    else:
+        logger.debug(f'{book_id} not in cache')
+        result = book_by_id()
+
+    if result is not None:
+        _CACHE[book_id] = result
+        book, authors = result
+
+        return HttpResponse(f"<h1>Found book: {book}, authors: <h2><p>{authors}</h1>")
+    else:
+        return HttpResponseNotFound(f"book not found: {book_id}")

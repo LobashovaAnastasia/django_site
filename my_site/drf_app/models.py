@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.auth.models import User, BaseUserManager
+from django.core.mail import send_mail
+from my_site.settings import DEFAULT_FROM_EMAIL
 
 
 class Publisher(models.Model):
@@ -36,3 +39,18 @@ class Store(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class UserManager(BaseUserManager):
+    def create_user(self, username, email, password=None, *args, **kwargs):
+        response = super().create_user(username, email, password, *args, **kwargs)
+        send_mail(subject="Account active",
+                  message="Your account is active",
+                  from_email=DEFAULT_FROM_EMAIL,
+                  recipient_list=[email]
+                  )
+
+
+class CustomUser(User):
+    objects = UserManager()
+
