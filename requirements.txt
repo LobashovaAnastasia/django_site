@@ -6,3 +6,7 @@ django-debug-toolbar
 cachetools
 asyncache
 django-rest-swagger
+pytest
+celery
+frozendict
+pydantic
